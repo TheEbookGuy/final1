@@ -1,0 +1,12 @@
+// Add this inside api(req,res,url), BEFORE the final 404 route:
+if(req.method==='GET'&&p==='/api/admin/users'){
+  const adminKey=process.env.ADMIN_KEY||'';
+  const supplied=req.headers['x-admin-key']||'';
+  if(!adminKey||supplied!==adminKey)
+    return json(res,401,{error:'Invalid admin key'});
+
+  return json(res,200,{users:db.users.map(u=>({
+    id:u.id,name:u.name,email:u.email,phone:u.phone||'',role:u.role,
+    collector_id:u.collector_id||null,facility_id:u.facility_id||null,created:u.created
+  }))});
+}

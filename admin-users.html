@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Urban Mining Connect — Users</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f4f7f5;margin:0;padding:30px;color:#18251d}
+.card{max-width:1100px;margin:auto;background:white;padding:25px;border-radius:16px;box-shadow:0 8px 30px #0001}
+.row{display:flex;gap:10px}.row input{flex:1}input,button{padding:11px;border-radius:8px;border:1px solid #ccd5cf}button{background:#183d2a;color:white;cursor:pointer}
+table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}th{background:#eef3ef}
+</style></head>
+<body><div class="card">
+<h1>Urban Mining Connect — User Database</h1>
+<p>Enter your admin key. Passwords are never shown.</p>
+<div class="row"><input id="key" type="password" placeholder="Admin key"><button onclick="loadUsers()">View Users</button></div>
+<p id="msg"></p><div id="table"></div>
+</div>
+<script src="config.js"></script>
+<script>
+async function loadUsers(){
+ try{
+  const r=await fetch(API_BASE_URL.replace(/\/$/,"")+"/api/admin/users",
+   {headers:{"X-Admin-Key":document.getElementById("key").value}});
+  const d=await r.json(); if(!r.ok) throw new Error(d.error||"Could not load users");
+  document.getElementById("msg").textContent=d.users.length+" user(s) found.";
+  document.getElementById("table").innerHTML="<table><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Created</th></tr>"+
+   d.users.map(u=>"<tr><td>"+esc(u.id)+"</td><td>"+esc(u.name)+"</td><td>"+esc(u.email)+"</td><td>"+esc(u.phone)+"</td><td>"+esc(u.role)+"</td><td>"+esc(u.created)+"</td></tr>").join("")+"</table>";
+ }catch(e){document.getElementById("msg").textContent=e.message}
+}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
+</script></body></html>
