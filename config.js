@@ -1,7 +1,7 @@
 // Urban Mining Connect backend configuration
 // Paste your Render backend URL below.
 
-const API_BASE_URL = "https://final1-koor.onrender.com/";
+const API_BASE_URL = "https://final1-2.onrender.com/";
 
 async function api(path, options = {}) {
   const response = await fetch(
