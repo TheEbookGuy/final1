@@ -11,12 +11,17 @@ const UP = path.join(DATA, 'uploads');
 
 fs.mkdirSync(UP, { recursive: true });
 
-/* =========================
+/* =========================================================
    CORS
-========================= */
+   Frontend:
+   https://theebookguy.github.io/final1/
+
+   IMPORTANT:
+   CORS uses the ORIGIN only, not /final1/
+========================================================= */
 
 const ALLOWED_ORIGINS = [
-  'https://pritampattanaik.github.io',
+  'https://theebookguy.github.io',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
   'http://localhost:3000',
@@ -27,22 +32,32 @@ function corsHeaders(req) {
   const origin = req.headers.origin;
 
   const headers = {
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Methods':
+      'GET,POST,PUT,OPTIONS',
+
+    'Access-Control-Allow-Headers':
+      'Content-Type',
+
+    'Access-Control-Allow-Credentials':
+      'true',
+
     'Vary': 'Origin'
   };
 
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    headers['Access-Control-Allow-Origin'] = origin;
+  if (
+    origin &&
+    ALLOWED_ORIGINS.includes(origin)
+  ) {
+    headers['Access-Control-Allow-Origin'] =
+      origin;
   }
 
   return headers;
 }
 
-/* =========================
-   SEED DATA
-========================= */
+/* =========================================================
+   MATERIALS
+========================================================= */
 
 const seedMaterials = [
   {
@@ -179,6 +194,10 @@ const seedMaterials = [
   }
 ];
 
+/* =========================================================
+   FACILITIES
+========================================================= */
+
 const seedFacilities = [
   {
     id: 'FAC-GREENLOOP',
@@ -230,9 +249,9 @@ const seedFacilities = [
   }
 ];
 
-/* =========================
+/* =========================================================
    DATABASE
-========================= */
+========================================================= */
 
 function load() {
   if (!fs.existsSync(DB)) {
@@ -245,11 +264,17 @@ function load() {
       events: []
     };
 
-    fs.writeFileSync(DB, JSON.stringify(x, null, 2));
+    fs.writeFileSync(
+      DB,
+      JSON.stringify(x, null, 2)
+    );
+
     return x;
   }
 
-  const x = JSON.parse(fs.readFileSync(DB, 'utf8'));
+  const x = JSON.parse(
+    fs.readFileSync(DB, 'utf8')
+  );
 
   x.materials ??= seedMaterials;
   x.facilities ??= seedFacilities;
@@ -264,132 +289,223 @@ function load() {
 let db = load();
 
 function persist() {
-  fs.writeFileSync(DB, JSON.stringify(db, null, 2));
+  fs.writeFileSync(
+    DB,
+    JSON.stringify(db, null, 2)
+  );
 }
 
-/* =========================
+/* =========================================================
    SESSIONS
-========================= */
+========================================================= */
 
 const sessions = new Map();
 
-/* =========================
-   RESPONSE HELPERS
-========================= */
+/* =========================================================
+   JSON RESPONSE
+========================================================= */
 
-function json(res, status, obj, extra = {}) {
+function json(
+  res,
+  status,
+  obj,
+  extra = {}
+) {
   const body = JSON.stringify(obj);
 
   res.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store',
+    'Content-Type':
+      'application/json; charset=utf-8',
+
+    'Cache-Control':
+      'no-store',
+
     ...extra
   });
 
   res.end(body);
 }
 
+/* =========================================================
+   CSV
+========================================================= */
+
 function csvEscape(v) {
-  return '"' + String(v ?? '').replaceAll('"', '""') + '"';
+  return '"' +
+    String(v ?? '')
+      .replaceAll('"', '""') +
+    '"';
 }
 
-/* =========================
+/* =========================================================
    REQUEST BODY
-========================= */
+========================================================= */
 
 function body(req) {
-  return new Promise((resolve, reject) => {
-    let b = '';
+  return new Promise(
+    (resolve, reject) => {
 
-    req.on('data', c => {
-      b += c;
+      let b = '';
 
-      if (b.length > 15e6) {
-        req.destroy();
-      }
-    });
+      req.on('data', chunk => {
 
-    req.on('end', () => {
-      try {
-        resolve(b ? JSON.parse(b) : {});
-      } catch (e) {
-        reject(e);
-      }
-    });
+        b += chunk;
 
-    req.on('error', reject);
-  });
+        if (b.length > 15e6) {
+          req.destroy();
+        }
+      });
+
+      req.on('end', () => {
+
+        try {
+          resolve(
+            b
+              ? JSON.parse(b)
+              : {}
+          );
+        } catch (e) {
+          reject(e);
+        }
+      });
+
+      req.on('error', reject);
+    }
+  );
 }
 
-/* =========================
-   HELPERS
-========================= */
+/* =========================================================
+   ID
+========================================================= */
 
 function id(prefix = 'UM') {
-  return prefix + '-' +
-    crypto.randomBytes(4).toString('hex').toUpperCase();
+  return prefix +
+    '-' +
+    crypto
+      .randomBytes(4)
+      .toString('hex')
+      .toUpperCase();
 }
+
+/* =========================================================
+   PASSWORD
+========================================================= */
 
 function hashPassword(
   password,
-  salt = crypto.randomBytes(16).toString('hex')
+  salt =
+    crypto
+      .randomBytes(16)
+      .toString('hex')
 ) {
   return {
     salt,
-    hash: crypto.scryptSync(
-      password,
-      salt,
-      64
-    ).toString('hex')
+
+    hash:
+      crypto
+        .scryptSync(
+          password,
+          salt,
+          64
+        )
+        .toString('hex')
   };
 }
 
-function verifyPassword(password, user) {
-  const a = Buffer.from(
-    hashPassword(password, user.password_salt).hash,
-    'hex'
+function verifyPassword(
+  password,
+  user
+) {
+
+  const calculated =
+    Buffer.from(
+      hashPassword(
+        password,
+        user.password_salt
+      ).hash,
+      'hex'
+    );
+
+  const stored =
+    Buffer.from(
+      user.password_hash,
+      'hex'
+    );
+
+  if (
+    calculated.length !==
+    stored.length
+  ) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(
+    calculated,
+    stored
   );
-
-  const b = Buffer.from(
-    user.password_hash,
-    'hex'
-  );
-
-  if (a.length !== b.length) return false;
-
-  return crypto.timingSafeEqual(a, b);
 }
 
+/* =========================================================
+   COOKIES
+========================================================= */
+
 function cookies(req) {
+
   const out = {};
 
   for (
-    const part of (req.headers.cookie || '').split(';')
+    const part of
+    (req.headers.cookie || '')
+      .split(';')
   ) {
-    const i = part.indexOf('=');
+
+    const i =
+      part.indexOf('=');
 
     if (i > 0) {
+
       out[
-        part.slice(0, i).trim()
-      ] = decodeURIComponent(
-        part.slice(i + 1).trim()
-      );
+        part
+          .slice(0, i)
+          .trim()
+      ] =
+        decodeURIComponent(
+          part
+            .slice(i + 1)
+            .trim()
+        );
     }
   }
 
   return out;
 }
 
+/* =========================================================
+   CURRENT USER
+========================================================= */
+
 function currentUser(req) {
-  const sid = cookies(req).um_session;
-  const uid = sid && sessions.get(sid);
+
+  const sid =
+    cookies(req).um_session;
+
+  const uid =
+    sid &&
+    sessions.get(sid);
 
   return uid
-    ? db.users.find(u => u.id === uid) || null
+    ? db.users.find(
+        u => u.id === uid
+      ) || null
     : null;
 }
 
+/* =========================================================
+   PUBLIC USER
+========================================================= */
+
 function publicUser(u) {
+
   return u
     ? {
         id: u.id,
@@ -397,28 +513,57 @@ function publicUser(u) {
         email: u.email,
         phone: u.phone || '',
         role: u.role,
-        collector_id: u.collector_id || null,
-        facility_id: u.facility_id || null,
+        collector_id:
+          u.collector_id ||
+          null,
+        facility_id:
+          u.facility_id ||
+          null,
         created: u.created
       }
     : null;
 }
 
-function requireUser(req, res, role) {
-  const u = currentUser(req);
+/* =========================================================
+   AUTHORIZATION
+========================================================= */
+
+function requireUser(
+  req,
+  res,
+  role
+) {
+
+  const u =
+    currentUser(req);
 
   if (!u) {
-    json(res, 401, {
-      error: 'Login required'
-    });
+
+    json(
+      res,
+      401,
+      {
+        error:
+          'Login required'
+      }
+    );
 
     return null;
   }
 
-  if (role && u.role !== role) {
-    json(res, 403, {
-      error: 'This account does not have access to this area'
-    });
+  if (
+    role &&
+    u.role !== role
+  ) {
+
+    json(
+      res,
+      403,
+      {
+        error:
+          'This account does not have access to this area'
+      }
+    );
 
     return null;
   }
@@ -426,32 +571,47 @@ function requireUser(req, res, role) {
   return u;
 }
 
-/* =========================
-   API
-========================= */
+/* =========================================================
+   API ROUTES
+========================================================= */
 
-async function api(req, res, url) {
+async function api(
+  req,
+  res,
+  url
+) {
 
-  const p = url.pathname;
+  const p =
+    url.pathname;
 
-  /* SIGNUP */
+  /* -------------------------
+     SIGNUP
+  ------------------------- */
 
   if (
     req.method === 'POST' &&
     p === '/api/auth/signup'
   ) {
 
-    const x = await body(req);
+    const x =
+      await body(req);
 
-    const name = String(x.name || '').trim();
+    const name =
+      String(
+        x.name || ''
+      ).trim();
 
-    const email = String(
-      x.email || ''
-    ).trim().toLowerCase();
+    const email =
+      String(
+        x.email || ''
+      )
+        .trim()
+        .toLowerCase();
 
-    const password = String(
-      x.password || ''
-    );
+    const password =
+      String(
+        x.password || ''
+      );
 
     const role =
       x.role === 'buyer'
@@ -463,10 +623,15 @@ async function api(req, res, url) {
       !email.includes('@') ||
       password.length < 6
     ) {
-      return json(res, 400, {
-        error:
-          'Enter a name, valid email and password of at least 6 characters'
-      });
+
+      return json(
+        res,
+        400,
+        {
+          error:
+            'Enter a name, valid email and password of at least 6 characters'
+        }
+      );
     }
 
     if (
@@ -474,37 +639,52 @@ async function api(req, res, url) {
         u => u.email === email
       )
     ) {
-      return json(res, 409, {
-        error:
-          'An account with this email already exists'
-      });
+
+      return json(
+        res,
+        409,
+        {
+          error:
+            'An account with this email already exists'
+        }
+      );
     }
 
-    const hp = hashPassword(password);
+    const hp =
+      hashPassword(password);
 
     const u = {
       id: id('USR'),
       name,
       email,
-      phone: String(
-        x.phone || ''
-      ).trim(),
+      phone:
+        String(
+          x.phone || ''
+        ).trim(),
       role,
-      password_salt: hp.salt,
-      password_hash: hp.hash,
-      created: new Date().toISOString()
+      password_salt:
+        hp.salt,
+      password_hash:
+        hp.hash,
+      created:
+        new Date().toISOString()
     };
 
-    if (role === 'collector') {
+    if (
+      role === 'collector'
+    ) {
 
-      u.collector_id = id('COL');
+      u.collector_id =
+        id('COL');
 
     } else {
 
-      const f = db.facilities.find(
-        f =>
-          f.authorization_status === 'active'
-      );
+      const f =
+        db.facilities.find(
+          f =>
+            f.authorization_status ===
+            'active'
+        );
 
       u.facility_id =
         f?.id ||
@@ -516,19 +696,25 @@ async function api(req, res, url) {
     persist();
 
     const sid =
-      crypto.randomBytes(32).toString('hex');
+      crypto
+        .randomBytes(32)
+        .toString('hex');
 
-    sessions.set(sid, u.id);
+    sessions.set(
+      sid,
+      u.id
+    );
 
     return json(
       res,
       201,
       {
-        user: publicUser(u)
+        user:
+          publicUser(u)
       },
       {
         /*
-          Cross-site cookie:
+          Required for:
           GitHub Pages -> Render
         */
         'Set-Cookie':
@@ -537,47 +723,69 @@ async function api(req, res, url) {
     );
   }
 
-  /* LOGIN */
+  /* -------------------------
+     LOGIN
+  ------------------------- */
 
   if (
     req.method === 'POST' &&
     p === '/api/auth/login'
   ) {
 
-    const x = await body(req);
+    const x =
+      await body(req);
 
-    const email = String(
-      x.email || ''
-    ).trim().toLowerCase();
+    const email =
+      String(
+        x.email || ''
+      )
+        .trim()
+        .toLowerCase();
 
-    const password = String(
-      x.password || ''
-    );
+    const password =
+      String(
+        x.password || ''
+      );
 
-    const u = db.users.find(
-      a => a.email === email
-    );
+    const u =
+      db.users.find(
+        a => a.email === email
+      );
 
     if (
       !u ||
-      !verifyPassword(password, u)
+      !verifyPassword(
+        password,
+        u
+      )
     ) {
-      return json(res, 401, {
-        error:
-          'Invalid email or password'
-      });
+
+      return json(
+        res,
+        401,
+        {
+          error:
+            'Invalid email or password'
+        }
+      );
     }
 
     const sid =
-      crypto.randomBytes(32).toString('hex');
+      crypto
+        .randomBytes(32)
+        .toString('hex');
 
-    sessions.set(sid, u.id);
+    sessions.set(
+      sid,
+      u.id
+    );
 
     return json(
       res,
       200,
       {
-        user: publicUser(u)
+        user:
+          publicUser(u)
       },
       {
         'Set-Cookie':
@@ -586,7 +794,9 @@ async function api(req, res, url) {
     );
   }
 
-  /* LOGOUT */
+  /* -------------------------
+     LOGOUT
+  ------------------------- */
 
   if (
     req.method === 'POST' &&
@@ -613,63 +823,95 @@ async function api(req, res, url) {
     );
   }
 
-  /* CURRENT USER */
+  /* -------------------------
+     ME
+  ------------------------- */
 
   if (
     req.method === 'GET' &&
     p === '/api/auth/me'
   ) {
 
-    return json(res, 200, {
-      user: publicUser(
-        currentUser(req)
-      )
-    });
+    return json(
+      res,
+      200,
+      {
+        user:
+          publicUser(
+            currentUser(req)
+          )
+      }
+    );
   }
 
-  /* BOOTSTRAP */
+  /* -------------------------
+     BOOTSTRAP
+  ------------------------- */
 
   if (
     req.method === 'GET' &&
     p === '/api/bootstrap'
   ) {
 
-    const u = currentUser(req);
+    const u =
+      currentUser(req);
 
     const lots =
-      u && u.role === 'collector'
+      u &&
+      u.role === 'collector'
         ? db.lots.filter(
-            l => l.user_id === u.id
+            l =>
+              l.user_id === u.id
           )
         : [];
 
-    return json(res, 200, {
-      materials: db.materials,
-      facilities: db.facilities,
-      lots,
-      profile:
-        u && u.role === 'collector'
-          ? {
-              collector_id: u.collector_id,
-              name: u.name,
-              preferred_language:
-                u.preferred_language ||
-                'Hindi',
-              operating_area:
-                u.operating_area ||
-                'Demo area'
-            }
-          : null,
-      user: publicUser(u)
-    });
+    return json(
+      res,
+      200,
+      {
+        materials:
+          db.materials,
+
+        facilities:
+          db.facilities,
+
+        lots,
+
+        profile:
+          u &&
+          u.role === 'collector'
+            ? {
+                collector_id:
+                  u.collector_id,
+
+                name:
+                  u.name,
+
+                preferred_language:
+                  u.preferred_language ||
+                  'Hindi',
+
+                operating_area:
+                  u.operating_area ||
+                  'Demo area'
+              }
+            : null,
+
+        user:
+          publicUser(u)
+      }
+    );
   }
 
-  /* MATERIALS */
+  /* -------------------------
+     MATERIALS
+  ------------------------- */
 
   if (
     req.method === 'GET' &&
     p === '/api/materials'
   ) {
+
     return json(
       res,
       200,
@@ -677,12 +919,15 @@ async function api(req, res, url) {
     );
   }
 
-  /* FACILITIES */
+  /* -------------------------
+     FACILITIES
+  ------------------------- */
 
   if (
     req.method === 'GET' &&
     p === '/api/facilities'
   ) {
+
     return json(
       res,
       200,
@@ -694,7 +939,9 @@ async function api(req, res, url) {
     );
   }
 
-  /* GET LOTS */
+  /* -------------------------
+     GET LOTS
+  ------------------------- */
 
   if (
     req.method === 'GET' &&
@@ -714,12 +961,15 @@ async function api(req, res, url) {
       res,
       200,
       db.lots.filter(
-        l => l.user_id === u.id
+        l =>
+          l.user_id === u.id
       )
     );
   }
 
-  /* CREATE LOT */
+  /* -------------------------
+     CREATE LOT
+  ------------------------- */
 
   if (
     req.method === 'POST' &&
@@ -735,20 +985,29 @@ async function api(req, res, url) {
 
     if (!u) return;
 
-    const x = await body(req);
+    const x =
+      await body(req);
 
     const m =
       db.materials.find(
-        a => a.id === x.category
+        a =>
+          a.id === x.category
       ) ||
       db.materials.find(
-        a => a.name === x.name
+        a =>
+          a.name === x.name
       );
 
     if (!m) {
-      return json(res, 400, {
-        error: 'Unknown material'
-      });
+
+      return json(
+        res,
+        400,
+        {
+          error:
+            'Unknown material'
+        }
+      );
     }
 
     const weight =
@@ -758,36 +1017,73 @@ async function api(req, res, url) {
       !Number.isFinite(weight) ||
       weight <= 0
     ) {
-      return json(res, 400, {
-        error:
-          'Weight must be greater than zero'
-      });
+
+      return json(
+        res,
+        400,
+        {
+          error:
+            'Weight must be greater than zero'
+        }
+      );
     }
 
     const lot = {
-      id: x.id || id(),
-      user_id: u.id,
-      collector_id: u.collector_id,
-      category: m.id,
-      group: m.group,
-      name: m.name,
+      id:
+        x.id ||
+        id(),
+
+      user_id:
+        u.id,
+
+      collector_id:
+        u.collector_id,
+
+      category:
+        m.id,
+
+      group:
+        m.group,
+
+      name:
+        m.name,
+
       weight,
-      rate: Number(x.rate) || m.rate,
-      status: 'created',
+
+      rate:
+        Number(x.rate) ||
+        m.rate,
+
+      status:
+        'created',
+
       created:
         x.created ||
         new Date().toISOString(),
-      photo_ref: null,
-      quoted_price: null,
-      facility_id: null,
-      payment_status: 'pending',
-      transaction_status: 'open',
-      events: []
+
+      photo_ref:
+        null,
+
+      quoted_price:
+        null,
+
+      facility_id:
+        null,
+
+      payment_status:
+        'pending',
+
+      transaction_status:
+        'open',
+
+      events:
+        []
     };
 
     if (
       x.photoData &&
-      typeof x.photoData === 'string' &&
+      typeof x.photoData ===
+        'string' &&
       x.photoData.startsWith(
         'data:image/'
       )
@@ -806,12 +1102,18 @@ async function api(req, res, url) {
             : mt[1];
 
         const file =
-          lot.id + '.' + ext;
+          lot.id +
+          '.' +
+          ext;
 
         fs.writeFileSync(
-          path.join(UP, file),
+          path.join(
+            UP,
+            file
+          ),
           Buffer.from(
-            x.photoData.split(',')[1],
+            x.photoData
+              .split(',')[1],
             'base64'
           )
         );
@@ -823,9 +1125,14 @@ async function api(req, res, url) {
     }
 
     lot.events.push({
-      type: 'captured',
-      at: new Date().toISOString(),
-      by: u.id
+      type:
+        'captured',
+
+      at:
+        new Date().toISOString(),
+
+      by:
+        u.id
     });
 
     db.lots.unshift(lot);
@@ -839,7 +1146,9 @@ async function api(req, res, url) {
     );
   }
 
-  /* GET SINGLE LOT */
+  /* -------------------------
+     SINGLE LOT
+  ------------------------- */
 
   if (
     req.method === 'GET' &&
@@ -866,9 +1175,15 @@ async function api(req, res, url) {
       );
 
     if (!lot) {
-      return json(res, 404, {
-        error: 'Lot not found'
-      });
+
+      return json(
+        res,
+        404,
+        {
+          error:
+            'Lot not found'
+        }
+      );
     }
 
     return json(
@@ -878,7 +1193,9 @@ async function api(req, res, url) {
     );
   }
 
-  /* HANDOVER */
+  /* -------------------------
+     HANDOVER
+  ------------------------- */
 
   if (
     req.method === 'POST' &&
@@ -894,7 +1211,8 @@ async function api(req, res, url) {
 
     if (!u) return;
 
-    const x = await body(req);
+    const x =
+      await body(req);
 
     const lot =
       db.lots.find(
@@ -903,14 +1221,20 @@ async function api(req, res, url) {
           l.user_id === u.id
       ) ||
       db.lots.find(
-        l => l.user_id === u.id
+        l =>
+          l.user_id === u.id
       );
 
     if (!lot) {
-      return json(res, 400, {
-        error:
-          'No lot available'
-      });
+
+      return json(
+        res,
+        400,
+        {
+          error:
+            'No lot available'
+        }
+      );
     }
 
     const buyer =
@@ -919,7 +1243,8 @@ async function api(req, res, url) {
             f =>
               f.name ===
                 x.facility_id ||
-              f.id === x.facility_id
+              f.id ===
+                x.facility_id
           )
         : db.facilities[0];
 
@@ -927,38 +1252,57 @@ async function api(req, res, url) {
       new Date().toISOString();
 
     const h = {
-      handover_id: id('HO'),
-      lot_id: lot.id,
-      collector_id: u.collector_id,
+      handover_id:
+        id('HO'),
+
+      lot_id:
+        lot.id,
+
+      collector_id:
+        u.collector_id,
+
       facility_id:
         buyer?.id ||
         'FAC-GREENLOOP',
+
       facility_name:
         buyer?.name ||
         'GreenLoop Materials',
-      weight: lot.weight,
+
+      weight:
+        lot.weight,
+
       quoted_price:
         x.quoted_price ??
         lot.rate,
+
       final_price:
         x.final_price ??
         x.quoted_price ??
         lot.rate,
-      confirmed_at: now,
+
+      confirmed_at:
+        now,
+
       payment_status:
         x.payment_status ||
         'pending',
+
       reference:
         crypto
           .randomBytes(3)
           .toString('hex')
           .toUpperCase(),
-      append_only: true
+
+      append_only:
+        true
     };
 
     db.handovers.push(h);
 
-    lot.status = 'confirmed';
+    lot.status =
+      'confirmed';
+
     lot.transaction_status =
       'completed';
 
@@ -974,15 +1318,21 @@ async function api(req, res, url) {
     lot.payment_status =
       h.payment_status;
 
-    lot.handover_at = now;
+    lot.handover_at =
+      now;
 
     lot.events.push({
       type:
         'handover_confirmed',
-      at: now,
+
+      at:
+        now,
+
       reference:
         h.reference,
-      by: u.id
+
+      by:
+        u.id
     });
 
     persist();
@@ -994,7 +1344,9 @@ async function api(req, res, url) {
     );
   }
 
-  /* EARNINGS */
+  /* -------------------------
+     EARNINGS
+  ------------------------- */
 
   if (
     req.method === 'GET' &&
@@ -1050,24 +1402,36 @@ async function api(req, res, url) {
           0
         );
 
-    return json(res, 200, {
-      earned: paid,
-      pending,
-      average: tx.length
-        ? tx.reduce(
-            (a, l) =>
-              a +
-              (l.final_price ||
-                l.rate) *
-                l.weight,
-            0
-          ) / tx.length
-        : 0,
-      lots: tx
-    });
+    return json(
+      res,
+      200,
+      {
+        earned:
+          paid,
+
+        pending,
+
+        average:
+          tx.length
+            ? tx.reduce(
+                (a, l) =>
+                  a +
+                  (l.final_price ||
+                    l.rate) *
+                    l.weight,
+                0
+              ) / tx.length
+            : 0,
+
+        lots:
+          tx
+      }
+    );
   }
 
-  /* RECOVERY */
+  /* -------------------------
+     RECOVERY
+  ------------------------- */
 
   if (
     req.method === 'GET' &&
@@ -1085,7 +1449,8 @@ async function api(req, res, url) {
 
     const lots =
       db.lots.filter(
-        l => l.user_id === u.id
+        l =>
+          l.user_id === u.id
       );
 
     const captured =
@@ -1117,40 +1482,52 @@ async function api(req, res, url) {
           'completed'
       )
     ) {
+
       by[l.group] =
         (by[l.group] || 0) +
         l.weight;
     }
 
-    return json(res, 200, {
-      captured,
-      recovered,
-      traceable: lots.length
-        ? Math.round(
-            lots.filter(
-              l =>
-                l.transaction_status ===
-                'completed'
-            ).length /
-              lots.length *
-              100
-          )
-        : 0,
-      authorizedRoute:
-        lots.length
-          ? Math.round(
-              lots.filter(
-                l => l.facility_id
-              ).length /
-                lots.length *
-                100
-            )
-          : 0,
-      by
-    });
+    return json(
+      res,
+      200,
+      {
+        captured,
+        recovered,
+
+        traceable:
+          lots.length
+            ? Math.round(
+                lots.filter(
+                  l =>
+                    l.transaction_status ===
+                    'completed'
+                ).length /
+                  lots.length *
+                  100
+              )
+            : 0,
+
+        authorizedRoute:
+          lots.length
+            ? Math.round(
+                lots.filter(
+                  l =>
+                    l.facility_id
+                ).length /
+                  lots.length *
+                  100
+              )
+            : 0,
+
+        by
+      }
+    );
   }
 
-  /* BUYER CONSOLE */
+  /* -------------------------
+     BUYER CONSOLE
+  ------------------------- */
 
   if (
     req.method === 'GET' &&
@@ -1182,29 +1559,39 @@ async function api(req, res, url) {
             u.facility_id
       ).length;
 
-    return json(res, 200, {
-      incoming,
-      confirmedToday,
-      facilities:
-        db.facilities,
-      traceability:
-        db.lots.length
-          ? Math.round(
-              db.lots.filter(
-                l =>
-                  l.transaction_status ===
-                  'completed'
-              ).length /
-                db.lots.length *
-                100
-            )
-          : 0,
-      buyer:
-        publicUser(u)
-    });
+    return json(
+      res,
+      200,
+      {
+        incoming,
+
+        confirmedToday,
+
+        facilities:
+          db.facilities,
+
+        traceability:
+          db.lots.length
+            ? Math.round(
+                db.lots.filter(
+                  l =>
+                    l.transaction_status ===
+                    'completed'
+                ).length /
+                  db.lots.length *
+                  100
+              )
+            : 0,
+
+        buyer:
+          publicUser(u)
+      }
+    );
   }
 
-  /* PROFILE */
+  /* -------------------------
+     PROFILE
+  ------------------------- */
 
   if (
     req.method === 'GET' &&
@@ -1220,20 +1607,30 @@ async function api(req, res, url) {
 
     if (!u) return;
 
-    return json(res, 200, {
-      collector_id:
-        u.collector_id,
-      name: u.name,
-      preferred_language:
-        u.preferred_language ||
-        'Hindi',
-      operating_area:
-        u.operating_area ||
-        'Demo area'
-    });
+    return json(
+      res,
+      200,
+      {
+        collector_id:
+          u.collector_id,
+
+        name:
+          u.name,
+
+        preferred_language:
+          u.preferred_language ||
+          'Hindi',
+
+        operating_area:
+          u.operating_area ||
+          'Demo area'
+      }
+    );
   }
 
-  /* UPDATE PROFILE */
+  /* -------------------------
+     UPDATE PROFILE
+  ------------------------- */
 
   if (
     req.method === 'PUT' &&
@@ -1269,18 +1666,28 @@ async function api(req, res, url) {
 
     persist();
 
-    return json(res, 200, {
-      collector_id:
-        u.collector_id,
-      name: u.name,
-      preferred_language:
-        u.preferred_language,
-      operating_area:
-        u.operating_area
-    });
+    return json(
+      res,
+      200,
+      {
+        collector_id:
+          u.collector_id,
+
+        name:
+          u.name,
+
+        preferred_language:
+          u.preferred_language,
+
+        operating_area:
+          u.operating_area
+      }
+    );
   }
 
-  /* EXPORT */
+  /* -------------------------
+     CSV EXPORT
+  ------------------------- */
 
   if (
     req.method === 'GET' &&
@@ -1312,6 +1719,7 @@ async function api(req, res, url) {
     for (
       const l of db.lots
     ) {
+
       rows.push([
         l.id,
         l.group,
@@ -1321,50 +1729,66 @@ async function api(req, res, url) {
           l.created,
         l.transaction_status,
         l.facility_id || '',
-        l.payment_status || ''
+        l.payment_status ||
+          ''
       ]);
     }
 
     const csv =
       rows
-        .map(r =>
-          r
-            .map(csvEscape)
-            .join(',')
+        .map(
+          r =>
+            r
+              .map(csvEscape)
+              .join(',')
         )
         .join('\n');
 
-    res.writeHead(200, {
-      ...corsHeaders(req),
-      'Content-Type':
-        'text/csv; charset=utf-8',
-      'Content-Disposition':
-        'attachment; filename="urban-mining-custody-trail.csv"'
-    });
+    res.writeHead(
+      200,
+      {
+        ...corsHeaders(req),
+
+        'Content-Type':
+          'text/csv; charset=utf-8',
+
+        'Content-Disposition':
+          'attachment; filename="urban-mining-custody-trail.csv"'
+      }
+    );
 
     return res.end(csv);
   }
 
-  return json(res, 404, {
-    error:
-      'API route not found'
-  });
+  return json(
+    res,
+    404,
+    {
+      error:
+        'API route not found'
+    }
+  );
 }
 
-/* =========================
+/* =========================================================
    STATIC FILE SECURITY
-========================= */
+========================================================= */
 
 function safePath(p) {
+
   const base =
     path.resolve(ROOT);
 
   const target =
-    path.resolve(ROOT, p);
+    path.resolve(
+      ROOT,
+      p
+    );
 
   return target.startsWith(
     base + path.sep
-  ) || target === base
+  ) ||
+  target === base
     ? target
     : null;
 }
@@ -1372,27 +1796,35 @@ function safePath(p) {
 const mime = {
   '.html':
     'text/html; charset=utf-8',
+
   '.js':
     'text/javascript; charset=utf-8',
+
   '.css':
     'text/css; charset=utf-8',
+
   '.svg':
     'image/svg+xml',
+
   '.json':
     'application/json',
+
   '.png':
     'image/png',
+
   '.jpg':
     'image/jpeg',
+
   '.jpeg':
     'image/jpeg',
+
   '.webp':
     'image/webp'
 };
 
-/* =========================
-   SERVER
-========================= */
+/* =========================================================
+   HTTP SERVER
+========================================================= */
 
 const server =
   http.createServer(
@@ -1443,6 +1875,7 @@ const server =
             '/api/'
           )
         ) {
+
           return await api(
             req,
             res,
@@ -1450,7 +1883,7 @@ const server =
           );
         }
 
-        /* STATIC FRONTEND */
+        /* STATIC FILES */
 
         let rel =
           decodeURIComponent(
@@ -1466,6 +1899,7 @@ const server =
           safePath(rel);
 
         if (!file) {
+
           return json(
             res,
             403,
@@ -1484,6 +1918,7 @@ const server =
               err ||
               !st.isFile()
             ) {
+
               return json(
                 res,
                 404,
@@ -1499,9 +1934,11 @@ const server =
               {
                 'Content-Type':
                   mime[
-                    path.extname(
-                      file
-                    ).toLowerCase()
+                    path
+                      .extname(
+                        file
+                      )
+                      .toLowerCase()
                   ] ||
                   'application/octet-stream'
               }
@@ -1523,6 +1960,7 @@ const server =
           {
             error:
               'Server error',
+
             detail:
               e.message
           }
@@ -1531,18 +1969,19 @@ const server =
     }
   );
 
-/* =========================
+/* =========================================================
    PORT
-========================= */
+========================================================= */
 
 const PORT =
   process.env.PORT || 8000;
 
 server.listen(
   PORT,
-  () =>
+  () => {
     console.log(
-      `Urban Mining Connect running at http://localhost:${PORT}`
-    )
+      `Urban Mining Connect running on port ${PORT}`
+    );
+  }
 );
 ```
