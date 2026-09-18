@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://final1-3.onrender.com/";
+const API_BASE_URL = "https://final1-3.onrender.com";
 
 async function api(path, options = {}) {
   const url =
